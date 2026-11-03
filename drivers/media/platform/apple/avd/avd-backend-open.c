@@ -209,8 +209,14 @@ static void avd_open_capabilities(struct avd_dev *avd)
 	if (!avd->fw || avd->fw->size < 0x40)
 		return;
 	info = (const char *)avd->fw->data + avd->fw->size - 0x40;
-	if (memcmp(info, "CODECS:", 7))
-		return;	/* fw_capabilities already set above */
+	if (memcmp(info, "CODECS:", 7)) {
+		/* The qualified J616c image has no CODECS trailer. */
+		if (avd_t6041_hevc_supported(avd)) {
+			avd->capabilities |= AVD_CAPABILITY_HEVC;
+			avd->fw_capabilities = avd->capabilities;
+		}
+		return;
+	}
 	avd->capabilities = 0;
 	for (i = 0; i < ARRAY_SIZE(codecs); i++)
 		if (strnstr(info, codecs[i].name, 0x40))

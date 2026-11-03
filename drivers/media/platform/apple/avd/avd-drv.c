@@ -565,6 +565,14 @@ static const struct of_device_id avd_of_match[] = {
 
 MODULE_DEVICE_TABLE(of, avd_of_match);
 
+bool avd_t6041_hevc_supported(struct avd_dev *avd)
+{
+	return of_machine_is_compatible("apple,j616c") &&
+		avd->variant == &avd_t6040_variant &&
+		(avd->variant->quirks & AVD_QUIRK_HEVC_V5_HEADER) &&
+		avd->fw->size == 0x12000;
+}
+
 static void avd_release_open_firmware(void *data)
 {
 	struct avd_dev *avd = data;
