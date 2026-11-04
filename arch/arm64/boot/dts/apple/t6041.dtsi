@@ -5,7 +5,6 @@
 
 
 /* Keep the validated T6041 topology independent of unqualified T6040 blocks. */
-/delete-node/ &ane;
 /delete-node/ &clk_200m;
 /delete-node/ &sio;
 /delete-node/ &ave0_dart1;
@@ -17,26 +16,18 @@
 /delete-node/ &apciec1_dart;
 /delete-node/ &usb4_2_dart;
 /delete-node/ &apciec2_dart;
-/delete-node/ &dispext0_dart;
-/delete-node/ &dcpext0_dart;
-/delete-node/ &sep_dart;
 /delete-node/ &apcie1_dart;
 /delete-node/ &sio_dart;
-/delete-node/ &ane0_dart0;
-/delete-node/ &ane0_dart1;
-/delete-node/ &ane0_dart2;
+/delete-node/ &jpeg0;
+/delete-node/ &jpeg1;
 /delete-node/ &jpeg0_dart;
 /delete-node/ &jpeg1_dart;
 /delete-node/ &scaler0_dart;
-/delete-node/ &dispext1_dart;
-/delete-node/ &dcpext1_dart;
 /delete-node/ &usb4_0_mbox;
 /delete-node/ &usb4_1_mbox;
 /delete-node/ &usb4_2_mbox;
-/delete-node/ &sep_mbox;
 /delete-node/ &sio_mbox;
 /delete-node/ &pinctrl_smc;
-/delete-node/ &pinctrl_aop;
 /delete-node/ &ps_gpx;
 /delete-node/ &ps_apcie_gp;
 /delete-node/ &ps_fab4_soc;
@@ -46,13 +37,11 @@
 /delete-node/ &ps_i2c0;
 /delete-node/ &ps_i2c5;
 /delete-node/ &ps_i2c7;
-/delete-node/ &ps_spi_p;
 /delete-node/ &ps_uart_p;
 /delete-node/ &ps_dpa_p;
 /delete-node/ &ps_aes;
 /delete-node/ &ps_spi0;
 /delete-node/ &ps_spi1;
-/delete-node/ &ps_spi2;
 /delete-node/ &ps_spi3;
 /delete-node/ &ps_spi4;
 /delete-node/ &ps_spi5;
@@ -91,9 +80,6 @@
 /delete-node/ &ps_apcie_sys_gp;
 /delete-node/ &ps_apcie_phy_sw;
 /delete-node/ &ps_jpg;
-/delete-node/ &ps_ane_sys;
-/delete-node/ &ps_sep;
-/delete-node/ &pmgr_ane;
 /delete-node/ &pmgr_disp;
 /delete-node/ &ps_ecpu_0;
 /delete-node/ &ps_ecpu_2;
@@ -155,7 +141,6 @@
 /delete-node/ &ps_atc2_cio_pcie;
 /delete-node/ &ps_pcpu0_4;
 /delete-node/ &ps_atc2_cio_usb;
-/delete-node/ &ps_atc3_common;
 /delete-node/ &ps_atc3_cio;
 /delete-node/ &ps_atc3_pcie;
 /delete-node/ &ps_atc3_cio_pcie;
@@ -187,23 +172,17 @@
 /delete-node/ &ps_nub_fabric;
 /delete-node/ &ps_nub_sram;
 /delete-node/ &ps_debug_switch;
-/delete-node/ &ps_atc3_usb;
-/delete-node/ &ps_atc3_phymxwrap;
 /delete-node/ &ps_nub_spmi_ahb;
 /delete-node/ &ps_nub_spmi0;
 /delete-node/ &ps_nub_spmi_a2;
 /delete-node/ &ps_nub_spi0;
 /delete-node/ &ps_nub_aon;
 /delete-node/ &ps_nub_ocla;
-/delete-node/ &ps_atc3_common_dp;
 /delete-node/ &ps_nub_spmi1;
-/delete-node/ &ps_atc3_usb_aon;
 /delete-node/ &ps_nub_spmi2;
 /delete-node/ &ps_nub_spmi3;
 /delete-node/ &ps_nub_spmi4;
-/delete-node/ &sep;
 /delete-node/ &dcuart;
-/delete-node/ &spi2;
 /delete-node/ &spi4;
 /delete-node/ &qspi;
 /delete-node/ &nub_spmi1;
@@ -212,6 +191,83 @@
 /delete-node/ &nub_spmi4;
 /delete-node/ &aop_spmi0;
 /delete-node/ &ave;
+
+/delete-node/ &aop_accel;
+/delete-node/ &aop_gyro;
+/delete-node/ &pmc_soc_max;
+/delete-node/ &pmu_rtc;
+
+/ {
+	/delete-node/ pmu;
+};
+
+&avd {
+	power-domains = <&ps_avd_sys>;
+	/delete-property/ power-domain-names;
+};
+
+&nub_spmi0 {
+	/delete-property/ interrupt-controller;
+	/delete-property/ #interrupt-cells;
+	/delete-property/ interrupt-parent;
+	/delete-property/ interrupts;
+};
+
+&usb_drd0_dart_0 {
+	/delete-property/ apple,dma-range;
+};
+
+&usb_drd0_dart_1 {
+	/delete-property/ apple,dma-range;
+};
+
+&usb_drd1_dart_0 {
+	/delete-property/ apple,dma-range;
+};
+
+&usb_drd1_dart_1 {
+	/delete-property/ apple,dma-range;
+};
+
+&usb_drd2_dart_0 {
+	/delete-property/ apple,dma-range;
+};
+
+&usb_drd2_dart_1 {
+	/delete-property/ apple,dma-range;
+};
+
+&mtp_dart {
+	/delete-property/ apple,dma-range;
+};
+
+&{/opp-table-e/opp01} {
+	/delete-property/ opp-microwatt;
+};
+
+&{/opp-table-e/opp02} {
+	/delete-property/ opp-microwatt;
+};
+
+&{/opp-table-e/opp03} {
+	/delete-property/ opp-microwatt;
+};
+
+&{/opp-table-e/opp04} {
+	/delete-property/ opp-microwatt;
+};
+
+&{/opp-table-e/opp05} {
+	/delete-property/ opp-microwatt;
+};
+
+&{/opp-table-e/opp06} {
+	/delete-property/ opp-microwatt;
+};
+
+&{/opp-table-e/opp07} {
+	/delete-property/ opp-microwatt;
+};
 
 &ps_avd_sys {
 	/delete-property/ power-domains;
@@ -226,6 +282,15 @@
 };
 
 &ps_atc2_common {
+	/delete-property/ power-domains;
+};
+
+&ps_atc3_common {
+	/delete-property/ power-domains;
+};
+
+/* FAB4_SOC and FAB5_SOC are critical, on from iBoot and not described here. */
+&ps_ane_sys {
 	/delete-property/ power-domains;
 };
 
