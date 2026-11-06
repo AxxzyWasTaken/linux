@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only OR MIT
-"""Check T6041 initialization data against caller-supplied captures."""
+"""Build T6041 initialization data and compare it with captures when given."""
 
 import argparse
 import re
@@ -226,7 +226,7 @@ def words(data):
 
 def volatile(first, second):
     """Words that differ between two captures of the same object taken ~60 s apart: the
-    firmware rewrites them while it runs (blobs3/volatile-regions.txt)."""
+    firmware rewrites them while it runs."""
     a, b = Path(first).read_bytes(), Path(second).read_bytes()
     return [(4 * i, 4 * i + 3) for i, (x, y) in enumerate(zip(words(a), words(b))) if x != y]
 
@@ -252,12 +252,15 @@ POWER_RUNTIME = [(0x3b50, 0x3b57), (0x6318, 0x631f), (0x63d4, 0x63d7)]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mc", required=True, help="native configuration capture")
-    parser.add_argument("--ha", required=True, help="native hardware-data capture")
-    parser.add_argument("--ha-repeat", required=True, help="repeated hardware-data capture")
+    parser.add_argument("--mc", help="native configuration capture")
+    parser.add_argument("--ha", help="native hardware-data capture")
+    parser.add_argument("--ha-repeat", help="repeated hardware-data capture")
     parser.add_argument("--out")
     parser.add_argument("--overlay", action="store_true")
     args = parser.parse_args()
+    captures = (args.mc, args.ha, args.ha_repeat)
+    if any(captures) and not all(captures):
+        parser.error("--mc, --ha and --ha-repeat go together")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -272,6 +275,8 @@ def main():
         hw = (out / "t6041-hwdata.bin").read_bytes()
         power = (out / "t6041-power-config.bin").read_bytes()
 
+    if not args.mc:
+        return
     mc = Path(args.mc).read_bytes()[:0x2718]
     ha = Path(args.ha).read_bytes()
     churn = volatile(args.ha, args.ha_repeat)

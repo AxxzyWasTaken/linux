@@ -202,6 +202,7 @@
 };
 
 &avd {
+	compatible = "apple,t6041-max-avd", "apple,t6041-avd", "apple,t8132-avd";
 	power-domains = <&ps_avd_sys>;
 	/delete-property/ power-domain-names;
 };
@@ -563,7 +564,7 @@
 	};
 
 	gfx_mbox: mailbox@28a600000 {
-		compatible = "apple,t6041-ascwrap-v6", "apple,t6040-ascwrap-v6";
+		compatible = "apple,t6040-ascwrap-v6";
 		reg = <0x2 0x8a600000 0x0 0x88000>,
 		      <0x2 0x8a050000 0x0 0x8>;
 		reg-names = "wrapper", "iop-vbar";

@@ -229,11 +229,6 @@ bool dcp_t6041_ext_enabled(void)
 #include "iomfb_v26_6_swap.h"
 #include "dcp-peer-v26_6.inc"
 
-static bool t6041_fw_26_5;
-module_param(t6041_fw_26_5, bool, 0444);
-MODULE_PARM_DESC(t6041_fw_26_5,
-		 "T6041: drive DCP firmware 26.5.2 with the desktop 26.6 interface (unqualified)");
-
 /*
  * The backlight maximum of a desktop 26.x panel whose node has no
  * apple,max-brightness: the J616s panel's user-accessible SDR maximum (ADT
@@ -4725,28 +4720,19 @@ static enum dcp_firmware_version dcp_check_firmware_version(struct device *dev)
 	ret = dcp_read_fw_version(dev, "apple,firmware-version", fw_str);
 
 	/*
-	 * T6041 (M4 Pro/Max) is driven only with the 26.6.2 firmware its
-	 * desktop IOMFB instance was written for: both the boot firmware and
-	 * its compatibility version must be exactly that release.
+	 * T6041 (M4 Pro/Max) is driven only with the 26.5.2 and 26.6.2 firmware
+	 * its desktop IOMFB instance was written for: the boot firmware and its
+	 * compatibility version must both be exactly the same one of those.
 	 */
 	if (of_device_is_compatible(dev->of_node, "apple,t6041-dcp") ||
 	    of_device_is_compatible(dev->of_node, "apple,t6041-dcpext")) {
 		int compat_ret = dcp_read_fw_version(dev, "apple,firmware-compat",
 						     compat_str);
 
-		if (ret >= 0 && compat_ret >= 0 && !strcmp(fw_str, "26.6.2") &&
-		    !strcmp(compat_str, "26.6.2"))
+		if (ret >= 0 && compat_ret >= 0 && !strcmp(fw_str, compat_str) &&
+		    (!strcmp(fw_str, "26.5.2") || !strcmp(fw_str, "26.6.2")))
 			return DCP_FIRMWARE_V_26_6_DESKTOP;
-		if (ret >= 0 && compat_ret >= 0 && !strcmp(fw_str, "26.5.2") &&
-		    !strcmp(compat_str, "26.5.2")) {
-			if (t6041_fw_26_5) {
-				dev_warn(dev, "T6041 DCP firmware 26.5.2 is unqualified; trying the desktop 26.6 interface\n");
-				return DCP_FIRMWARE_V_26_6_DESKTOP;
-			}
-			dev_err(dev, "T6041 display not started: DCP firmware 26.5.2 is unqualified (appledrm.t6041_fw_26_5=1 tries it)\n");
-			return DCP_FIRMWARE_UNKNOWN;
-		}
-		dev_err(dev, "T6041 display not started: DCP firmware %s (compat %s) is not 26.6.2\n",
+		dev_err(dev, "T6041 display not started: DCP firmware %s (compat %s) is not 26.5.2 or 26.6.2\n",
 			ret >= 0 ? fw_str : "missing",
 			compat_ret >= 0 ? compat_str : "missing");
 		return DCP_FIRMWARE_UNKNOWN;
@@ -6400,9 +6386,17 @@ static int dcp_platform_suspend(struct device *dev)
 	if (dcp_takeover_was_aborted(dcp))
 		return -EBUSY;
 
-	/* The retained T8132 session has no qualified system-sleep handshake. */
-	if (iomfb_is_m4(dcp))
-		return -EBUSY;
+	/*
+	 * T8132: setPowerState powers the display down; the coprocessor keeps
+	 * running and its power domains stay on, as below.
+	 */
+	if (iomfb_is_m4(dcp)) {
+		int ret = iomfb_m4_suspend(dcp);
+
+		if (!ret)
+			device_set_wakeup_path(dev);
+		return ret;
+	}
 	if (READ_ONCE(dcp->ext_dead))
 		return 0;
 	iomfb_v14_7_backlight_suspend(dcp);
@@ -6483,7 +6477,7 @@ static int dcp_platform_resume(struct device *dev)
 		return 0;
 
 	if (iomfb_is_m4(dcp))
-		return iomfb_m4_health(dcp);
+		return iomfb_m4_resume(dcp);
 	if (READ_ONCE(dcp->ext_dead))
 		return 0;
 
@@ -6506,10 +6500,26 @@ static int dcp_platform_resume(struct device *dev)
 	return 0;
 }
 
+/*
+ * Hibernation: the T8132 power-down keeps the retained session, which a
+ * hibernation image cannot carry across the boot that restores it.
+ */
+static int dcp_platform_freeze(struct device *dev)
+{
+	if (iomfb_is_m4(dev_get_drvdata(dev)))
+		return -EBUSY;
+	return dcp_platform_suspend(dev);
+}
+
 static const struct dev_pm_ops dcp_platform_pm_ops = {
 	.prepare = pm_sleep_ptr(dcp_platform_prepare),
 	.complete = pm_sleep_ptr(dcp_platform_complete),
-	SYSTEM_SLEEP_PM_OPS(dcp_platform_suspend, dcp_platform_resume)
+	.suspend = pm_sleep_ptr(dcp_platform_suspend),
+	.resume = pm_sleep_ptr(dcp_platform_resume),
+	.freeze = pm_sleep_ptr(dcp_platform_freeze),
+	.thaw = pm_sleep_ptr(dcp_platform_resume),
+	.poweroff = pm_sleep_ptr(dcp_platform_freeze),
+	.restore = pm_sleep_ptr(dcp_platform_resume),
 };
 
 static const struct apple_dcp_hw_data apple_dcp_hw_t6020 = {

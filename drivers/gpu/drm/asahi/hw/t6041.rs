@@ -60,9 +60,7 @@ pub(crate) const CONFIG: Config = Config {
                 0xa3, 0xc1, 0x83, 0xe8,
             ],
         }],
-        // Experimental TA-mode workaround: reported on another J616C/25G83
-        // implementation, not yet hardware-verified here on 25F84. Keep the
-        // shared firmware profiles (in particular M4 Pro's) unchanged.
+        // macOS writes these tiler segment values on this machine, not the two-cluster ones.
         variant: &fw::variant::Variant {
             ta_mode_1: true,
             ..fw::variant::V25F84
@@ -70,6 +68,7 @@ pub(crate) const CONFIG: Config = Config {
     }]),
     core_layout: CoreLayout {
         cores: Some((4, 40)),
+        alternate_core_masks: None,
         operand_state: fw::compute::OperandState::FOUR_BY_TEN,
         deflake: fw::render::Deflake::FOUR_CLUSTERS,
         compute_blocks: 160,

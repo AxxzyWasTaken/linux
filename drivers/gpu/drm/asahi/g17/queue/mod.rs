@@ -165,7 +165,6 @@ impl<B: Backend> Queue<B> {
 
     fn prune_frontier(&mut self, index: usize) {
         let failure = &mut self.failures[index];
-        let transient_ok = self.variant.is_25f84();
         // Without room the entries are released here, as they always could be.
         let mut finished = if self
             .finished
@@ -184,13 +183,7 @@ impl<B: Backend> Queue<B> {
             if let Some(finished) = finished.as_mut() {
                 let _ = finished.push_within_capacity(fences.clone());
             }
-            let transient = transient_ok
-                && [ECANCELED, ENODATA, EBUSY]
-                    .iter()
-                    .any(|error| error.to_errno() == status);
-            if !transient {
-                failure.note(*sequence, status, fences);
-            }
+            failure.note(*sequence, status, fences);
             false
         });
     }

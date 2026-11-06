@@ -1,5 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
+//! Initialization data of the 25G83 firmware build (macOS 26.6, `mBoot-18000.161.10`).
+//!
+//! The M4 Pro (T6040) runs this build. It has the interface version of the A18 Pro's
+//! 26A428 build and the same objects, with these differences:
+//!
+//! - [`HwData25G83`]: the A18 Pro's hardware data up to `0x2554`, eight bytes inserted before
+//!   `0x2570` and four more before `0x2614`, and the CS and AFR performance tables;
+//! - [`PowerConfig25G83`]: the power configuration with two blocks removed (`0xa8` and `0xa0`
+//!   bytes), at bundle `+0x5380`, followed by the auxiliary data;
+//! - region C and the power state ([`POWER_STATE_WORDS`]) with other values;
+//! - one firmware instance carrying both roles, with a larger status B ([`private`]), five
+//!   separately allocated views and a firmware area ([`kernel_window`]).
+//!
+//! The constant contents were derived from the G16 encoders of Gravity Linux, which run this
+//! firmware on the M4 Pro, by evaluating them for this SoC; see the commit that added them.
 
 use super::{
     fill_words, perf_states, CompletionRingDescriptor, HwDataArgs, Opp, PerfGroup,
@@ -410,6 +425,7 @@ pub(crate) struct Chip {
     pub(crate) cs_perf_table: bool,
 }
 
+/// Offset of the per-chip leakage coefficients in the power configuration.
 const LEAKAGE_OFFSET: usize = 0x642c;
 /// Offset in the power configuration of the GPU address of the configuration's status (the
 /// configuration named by the root, `+0x80`).
@@ -628,6 +644,8 @@ impl PowerConfig25G83 {
     }
 }
 
+/// The AON temperature-source rows the power configuration names: the GPU cluster 0, GPU
+/// cluster 1 and SoC sensors.
 pub(crate) const AON_TABLE: [u32; 9] = [
     u32::from_be_bytes(*b"g0TR"),
     0x006b_0001,

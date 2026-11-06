@@ -174,12 +174,8 @@ impl InitData {
         }
 
         // Status A and B: only the boot words and the firmware-control pointers.
-        let mut status_a = abi::StatusBlock::new();
-        if variant.is_25f84() && crate::module_parameters::t6041_fw_log.value() != 0 {
-            status_a.unk_0 = 3;
-        }
         self.object_mut(self.cluster)?
-            .write(v::private::STATUS_A, status_a)?;
+            .write(v::private::STATUS_A, abi::StatusBlock::new())?;
         self.object_mut(self.cluster)?
             .write(v::private::STATUS_B, abi::StatusBlock::new())?;
         // Status B keeps the A18 Pro's field offsets up to its recovery words.
@@ -219,9 +215,6 @@ impl InitData {
                 main.power_config_va = bundle_va + v::POWER_CONFIG as u64;
                 main.unk_32c = 0;
                 main.unk_344 = 0;
-                if variant.is_25f84() && crate::module_parameters::t6041_fw_log.value() != 0 {
-                    main.log_enable = 1;
-                }
                 Ok(())
             })?;
         if variant.opening_record {

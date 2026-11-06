@@ -27,26 +27,9 @@ const COMPUTE_REGISTERS: usize = 41;
 const COMPUTE_REGISTERS_MAX: usize = COMPUTE_REGISTERS + 1;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u8)]
 pub(crate) enum ComputeProgram {
-    G17P = 0,
-    V25F84 = 1,
-}
-
-static PROGRAM: core::sync::atomic::AtomicU8 =
-    core::sync::atomic::AtomicU8::new(ComputeProgram::G17P as u8);
-
-impl ComputeProgram {
-    pub(crate) fn select(self) {
-        PROGRAM.store(self as u8, core::sync::atomic::Ordering::Relaxed);
-    }
-
-    pub(crate) fn current() -> Self {
-        match PROGRAM.load(core::sync::atomic::Ordering::Relaxed) {
-            1 => Self::V25F84,
-            _ => Self::G17P,
-        }
-    }
+    G17P,
+    V25F84,
 }
 
 const V25F84_REGISTERS: usize = 36;
@@ -160,8 +143,8 @@ impl ScratchRequest {
         self.tail
     }
 
-    fn checkpoints(self) -> [u16; 4] {
-        match ComputeProgram::current() {
+    fn checkpoints(self, program: ComputeProgram) -> [u16; 4] {
+        match program {
             ComputeProgram::G17P => CHECKPOINTS.map(|count| count + u16::from(self.enabled())),
             ComputeProgram::V25F84 => V25F84_CHECKPOINTS,
         }
@@ -318,6 +301,7 @@ impl IntersectionTables {
 
 /// Inputs of one compute descriptor.
 pub(crate) struct ComputeArgs {
+    pub(crate) program: ComputeProgram,
     pub(crate) intersection: IntersectionTables,
     /// Scratch request validated with the userspace command.
     pub(crate) scratch: ScratchRequest,
@@ -612,7 +596,6 @@ impl ComputeDescriptor {
         {
             return Err(EINVAL);
         }
-        let program = ComputeProgram::current();
         let alt_registers = alt_registers(args)?;
         let registers_va = offset_va(args.descriptor_va, Self::REGISTERS_OFFSET)?;
         let alt_registers_va = offset_va(args.descriptor_va, Self::ALT_REGISTERS_OFFSET)?;
@@ -622,8 +605,8 @@ impl ComputeDescriptor {
         self.tag = CommandTag::Compute as u32;
         self.context_id = args.context_id.into();
         self.work_state_va = args.work_state_va;
-        self.checkpoints = args.scratch.checkpoints();
-        match program {
+        self.checkpoints = args.scratch.checkpoints(args.program);
+        match args.program {
             ComputeProgram::G17P => {
                 let registers = compute_registers(args)?;
                 let first = usize::from(!args.scratch.enabled());
@@ -655,7 +638,7 @@ impl ComputeDescriptor {
         self.timestamp_end_va = timestamp_end_va;
         self.unk_fb0 = Self::UNK_FB0;
         self.free_list_control_va = args.free_list_control_va;
-        match program {
+        match args.program {
             ComputeProgram::G17P => {
                 self.unk_fba = Self::UNK_FBA;
                 self.unk_fc5 = Self::UNK_FC5;
@@ -677,10 +660,11 @@ impl ComputeDescriptor {
     pub(crate) fn register_bindings(
         descriptor_va: u64,
         scratch: ScratchRequest,
+        program: ComputeProgram,
     ) -> Result<[Option<RegisterArrayBinding>; 4]> {
         let registers = RegisterArrayBinding::new(
             offset_va(descriptor_va, Self::REGISTERS_OFFSET)?,
-            scratch.checkpoints()[0] as u8,
+            scratch.checkpoints(program)[0] as u8,
         )?;
         let alt_registers = RegisterArrayBinding::new(
             offset_va(descriptor_va, Self::ALT_REGISTERS_OFFSET)?,

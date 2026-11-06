@@ -213,14 +213,7 @@ impl Registry {
             buffers <- BufferIds::new(),
             metrics: Arc::new(MetricsIds::new(), GFP_KERNEL)?,
             qos_ids: QosIds::new()?,
-            admission: {
-                let admission = admission::Pool::with_waiters(kick::queue_limit(variant.qid_floor), queues, renders)?;
-                if variant.is_25f84() && crate::module_parameters::t6041_serial_render.value() != 0 {
-                    admission.serialize_render();
-                    pr_warn!("T6041 25F84: serial render admission enabled (one outstanding render lease)\n");
-                }
-                admission
-            },
+            admission: admission::Pool::with_waiters(kick::queue_limit(variant.qid_floor), queues, renders)?,
             render: render::RenderState::new(clusters, deflake, descriptor_flags)?,
             identities: queue::Identities::new(),
             compute: {
@@ -1167,6 +1160,7 @@ impl Backend {
                     self.context.clone(),
                     self.shared.variant.pointers,
                     self.shared.operand_state,
+                    self.shared.variant.compute,
                 )?;
                 Ok(KBox::new(queue, GFP_KERNEL)?)
             })();
@@ -1747,7 +1741,7 @@ impl super::Firmware {
 impl Backend {
     fn ensure_compute(&self, scs_pages: u16, admission: &Admission<'_>) -> Result {
         admission.check()?;
-        let required = super::fw::compute_pool::required_blocks(self.shared.active_cores, scs_pages)?;
+        let required = super::fw::compute_pool::required_blocks(self.shared.compute_blocks, self.shared.active_cores, scs_pages)?;
         let mut deferred = DeferredBatch::publication()?;
         loop {
             admission.check()?;
@@ -1846,7 +1840,7 @@ impl Backend {
             return None;
         }
         let super::command::Validated::Compute { scratch, .. } = &packet.command else { return None; };
-        let required = super::fw::compute_pool::required_blocks(self.shared.active_cores, scratch.pages()).ok()?;
+        let required = super::fw::compute_pool::required_blocks(self.shared.compute_blocks, self.shared.active_cores, scratch.pages()).ok()?;
         loop {
             let channels = self.shared.channels.observe();
             let progress = self.shared.progress.observe();
@@ -1989,7 +1983,7 @@ impl Backend {
         let super::command::Validated::Compute { scratch, .. } = &packet.command else {
             return Some(Err(EINVAL));
         };
-        let required = match super::fw::compute_pool::required_blocks(self.shared.active_cores, scratch.pages()) {
+        let required = match super::fw::compute_pool::required_blocks(self.shared.compute_blocks, self.shared.active_cores, scratch.pages()) {
             Ok(required) => required,
             Err(error) => return Some(Err(error)),
         };
@@ -2004,7 +1998,7 @@ impl Backend {
         deferred: &mut DeferredBatch,
     ) -> Result {
         let super::command::Validated::Compute { scratch, .. } = &packet.command else { return Err(EINVAL); };
-        let required = super::fw::compute_pool::required_blocks(self.shared.active_cores, scratch.pages())?;
+        let required = super::fw::compute_pool::required_blocks(self.shared.compute_blocks, self.shared.active_cores, scratch.pages())?;
         if packet.cancel_requested() || self.admission_open().is_err() || packet.completion.status().get() != 0 {
             return Err(render::FALLBACK);
         }
@@ -2081,7 +2075,7 @@ impl Backend {
     ) -> Result {
         packet.check_dependencies()?;
         let super::command::Validated::Compute { scratch, .. } = &packet.command else { return Err(EINVAL); };
-        let required = super::fw::compute_pool::required_blocks(self.shared.active_cores, scratch.pages())?;
+        let required = super::fw::compute_pool::required_blocks(self.shared.compute_blocks, self.shared.active_cores, scratch.pages())?;
         if let Some(result) = self.compute_direct(packet, required, deferred) {
             return result;
         }

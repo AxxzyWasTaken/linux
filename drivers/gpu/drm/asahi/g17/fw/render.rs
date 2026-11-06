@@ -668,7 +668,7 @@ fn ta_registers(
 /// Tiler segment control of a two-cluster pass, what macOS writes.
 const VDM_SEGMENT_CONTROL: u64 = 0x20_0440;
 const VDM_SEGMENT_INDEX: u64 = 4;
-/// 0x1c890 of the experimental T6041 25F84 TA mode, with 0x1c918 = 0.
+/// Tiler segment control of T6041 on 25F84, what macOS writes, with 0x1c918 = 0.
 const T6041_TA_MODE_1: u64 = 1;
 /// Pages the tiler keeps out of a partial render's segments: without them the pages a pass
 /// returns shrink to none and the tiler can't advance. Fifteen blocks, macOS's minimum heap.

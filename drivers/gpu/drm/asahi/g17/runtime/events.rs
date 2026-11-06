@@ -137,9 +137,7 @@ impl recovery::Memory for Service<'_> {
         self.firmware.init.host_recovery()
     }
     fn fault_sources(&self) -> Result<recovery::Sources> {
-        let mut sources = self.firmware.init.fault_sources()?;
-        sources.spare_reason_zero = self.firmware.variant.is_25f84();
-        Ok(sources)
+        self.firmware.init.fault_sources()
     }
 
     fn transition(&self, expected: u32, next: u32) -> Result {
