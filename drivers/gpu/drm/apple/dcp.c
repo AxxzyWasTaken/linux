@@ -8633,6 +8633,13 @@ static int dcp_platform_suspend(struct device *dev)
 	if (dcp_takeover_was_aborted(dcp))
 		return -EBUSY;
 
+	/*
+	 * An external DCP given up at probe never set up its works below, and one a T6041
+	 * sleep stopped for good has nothing left to put down.
+	 */
+	if (READ_ONCE(dcp->ext_dead))
+		return 0;
+
 	/* A firmware start from the last resume finishes first; this sleep stops it again. */
 	flush_work(&dcp->s2r_prewarm_work);
 	cancel_delayed_work_sync(&dcp->s2r_prewarm_off_wq);
