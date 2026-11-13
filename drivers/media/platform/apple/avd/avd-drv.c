@@ -27,6 +27,10 @@
 #include "avd-regs.h"
 #include "avd-apple-protocol.h"
 
+static bool soc_floor = true;
+module_param(soc_floor, bool, 0444);
+MODULE_PARM_DESC(soc_floor, "Hold the SoC performance floor (the \"perf\" domain) while decoding");
+
 static void calc_tile_meta(u32 w, u32 h, u32 bpb, u32 tile_dim,
 			   u32 meta_hdr_bytes, u32 *tile, u32 *meta)
 {
@@ -667,6 +671,10 @@ static int avd_probe(struct platform_device *pdev)
 		return PTR_ERR(avd->rstc);
 
 	/*
+	 * soc_floor=0 attaches only "core": the decoder then runs without the
+	 * PMC floor. On the T6041 that keeps 1080p real time with room to spare
+	 * and saves about 1.4 W while a video plays.
+	 *
 	 * A node may list a second power domain, "perf": the PMC floor that
 	 * holds the SoC rail at its performance level while the decoder works
 	 * (decode runs at about half speed on the M4 Pro without it). With more
@@ -677,10 +685,15 @@ static int avd_probe(struct platform_device *pdev)
 	 */
 	if (of_count_phandle_with_args(pdev->dev.of_node, "power-domains",
 				       "#power-domain-cells") > 1) {
-		static const struct dev_pm_domain_attach_data pd_data = {
+		static const char *const core_only[] = { "core" };
+		struct dev_pm_domain_attach_data pd_data = {
 			.pd_flags = PD_FLAG_DEV_LINK_ON,
 		};
 
+		if (!soc_floor) {
+			pd_data.pd_names = core_only;
+			pd_data.num_pd_names = ARRAY_SIZE(core_only);
+		}
 		ret = devm_pm_domain_attach_list(avd->dev, &pd_data, &avd->pd_list);
 		if (ret < 0)
 			return dev_err_probe(avd->dev, ret, "failed to attach power domains\n");
